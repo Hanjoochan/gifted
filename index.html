@@ -3,17 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Posture Detector</title>
+    <title>AI Model Demo</title>
     <style>
-        :root {
-            --bg-light: #ffffff;
-            --bg-dark: #2c2c2c;
-            --text-light: #000000;
-            --text-dark: #ffffff;
-            --good-posture: #4caf50;
-            --bad-posture: #e91e63;
-        }
-
+        /* Base styles for the page */
         body {
             font-family: 'Arial', sans-serif;
             margin: 0;
@@ -22,168 +14,148 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            background: linear-gradient(135deg, #74ebd5, #acb6e5);
             min-height: 100vh;
-            background: var(--bg-light);
-            color: var(--text-light);
-            transition: all 0.3s ease-in-out;
+            color: #333;
         }
 
         h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
+            color: #fff;
+            text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        p {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: #f9f9f9;
+        }
+
+        button {
+            font-size: 1.2rem;
+            background: #ff7eb3;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            background: #ff5672;
         }
 
         #webcam-container {
             margin: 20px 0;
+            position: relative;
+            border: 4px solid #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        #webcam-container canvas {
+            display: block;
+        }
+
+        #label-container {
+            margin-top: 10px;
+            width: 100%;
+            max-width: 300px;
         }
 
         #label-container div {
-            margin: 10px 0;
+            background: #fff;
+            border-radius: 5px;
+            margin: 5px 0;
             padding: 10px;
-            border-radius: 5px;
-            color: #fff;
             text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            animation: popIn 0.3s ease-in-out;
         }
 
-        .good {
-            background-color: var(--good-posture);
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        .bad {
-            background-color: var(--bad-posture);
-        }
-
-        #prank-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            color: #fff;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            z-index: 9999;
-        }
-
-        #prank-overlay img {
-            max-width: 300px;
-            margin: 20px 0;
-        }
-
-        button {
-            font-size: 1rem;
-            padding: 10px 20px;
-            border: none;
-            background: #ff9800;
-            color: #fff;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #e68900;
+        @keyframes popIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
     </style>
 </head>
 <body>
-    <h1>AI Posture Detector</h1>
-    <button onclick="init()">Start</button>
-    <div id="webcam-container"></div>
+    <h1>AI Model Demo</h1>
+    <p>Experience real-time predictions with a Teachable Machine model!</p>
+    <button type="button" onclick="init()">Start</button>
+    <div id="webcam-container"></div>   
     <div id="label-container"></div>
-
-    <!-- Prank overlay -->
-    <div id="prank-overlay">
-        <h2 id="prank-message">Loading...</h2>
-        <img id="prank-image" src="" alt="Prank Image">
-        <button onclick="closePrank()">Close</button>
-    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-    <script>
+    <script type="text/javascript">
+        // the link to your model provided by Teachable Machine export panel
         const URL = "https://teachablemachine.withgoogle.com/models/QtaEIMVRv/";
 
-        const prankMessages = [
-            { text: "랜섬웨어 설치 중입니다...", image: "https://via.placeholder.com/300/FF0000/FFFFFF?text=Ransomware" },
-            { text: "화면이 깜빡일 예정입니다!", image: "https://via.placeholder.com/300/FF5733/FFFFFF?text=Blinking" },
-            { text: "나쁜 자세를 감지했습니다. 고쳐주세요!", image: "https://via.placeholder.com/300/FFC300/FFFFFF?text=Fix+Posture!" },
-            { text: "무작위 사이트로 이동 중...", image: "https://via.placeholder.com/300/DAF7A6/FFFFFF?text=Redirecting" },
-            { text: "이상한 소리가 들릴 예정입니다.", image: "https://via.placeholder.com/300/900C3F/FFFFFF?text=Weird+Sound!" },
-            { text: "당신의 컴퓨터는 해킹당했습니다!", image: "https://via.placeholder.com/300/2980B9/FFFFFF?text=Hacked!" },
-            { text: "잘했어요! 자세를 고치셨네요.", image: "https://via.placeholder.com/300/00FF00/FFFFFF?text=Good+Job!" },
-            { text: "농담: 당신의 자세가 정말 나빠요!", image: "https://via.placeholder.com/300/FF5733/FFFFFF?text=Joke!" },
-            { text: "이상한 GIF를 표시 중...", image: "https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif" },
-            { text: "긴급 경고!", image: "https://via.placeholder.com/300/FF0000/FFFFFF?text=Emergency!" }
-        ];
-
         let model, webcam, labelContainer, maxPredictions;
-        let prankActive = false;
-        let goodPostureLastDetected = false; // Track the posture state
 
+        // Load the image model and setup the webcam
         async function init() {
             const modelURL = URL + "model.json";
             const metadataURL = URL + "metadata.json";
 
+            // load the model and metadata
             model = await tmImage.load(modelURL, metadataURL);
             maxPredictions = model.getTotalClasses();
 
-            webcam = new tmImage.Webcam(300, 300, true);
-            await webcam.setup();
+            // Setup webcam
+            const flip = true; // whether to flip the webcam
+            webcam = new tmImage.Webcam(300, 300, flip); // larger resolution for better visibility
+            await webcam.setup(); // request access to the webcam
             await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            // Append webcam canvas to DOM
             document.getElementById("webcam-container").appendChild(webcam.canvas);
             labelContainer = document.getElementById("label-container");
-
-            for (let i = 0; i < maxPredictions; i++) {
+            for (let i = 0; i < maxPredictions; i++) { // create divs for class labels
                 labelContainer.appendChild(document.createElement("div"));
             }
-
-            window.requestAnimationFrame(loop);
         }
 
         async function loop() {
-            webcam.update();
+            webcam.update(); // update the webcam frame
             await predict();
             window.requestAnimationFrame(loop);
         }
 
+        // Run the webcam image through the image model
         async function predict() {
             const prediction = await model.predict(webcam.canvas);
-            let isGoodPosture = false;
-
-            prediction.forEach((p, i) => {
-                const element = labelContainer.childNodes[i];
-                element.textContent = `${p.className}: ${(p.probability * 100).toFixed(2)}%`;
-                element.className = p.probability > 0.8 ? (p.className === "Good Posture" ? "good" : "bad") : "";
-                if (p.className === "Good Posture" && p.probability > 0.8) {
-                    isGoodPosture = true;
-                }
-            });
-
-            if (!isGoodPosture && !prankActive && Math.random() < 0.2) {
-                // Trigger prank only 20% of the time if posture is bad
-                triggerPrank();
+            for (let i = 0; i < maxPredictions; i++) {
+                const classPrediction =
+                    `<strong>${prediction[i].className}</strong>: ${(
+                        prediction[i].probability * 100
+                    ).toFixed(2)}%`;
+                labelContainer.childNodes[i].innerHTML = classPrediction;
             }
-        }
-
-        function triggerPrank() {
-            prankActive = true;
-            const prank = prankMessages[Math.floor(Math.random() * prankMessages.length)];
-            document.getElementById("prank-message").innerText = prank.text;
-            document.getElementById("prank-image").src = prank.image;
-            document.getElementById("prank-overlay").style.display = "flex";
-
-            // Automatically close prank after 5 seconds
-            setTimeout(() => {
-                if (prankActive) closePrank();
-            }, 5000);
-        }
-
-        function closePrank() {
-            document.getElementById("prank-overlay").style.display = "none";
-            prankActive = false; // Allow new pranks after closing
         }
     </script>
 </body>
